@@ -1,0 +1,56 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# C extensions
+*.so
+
+# Virtual environment
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.env
+.env.local
+
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+
+# Python environment / dependency tools
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+poetry.lock
+
+# Logs and debug
+*.log
+
+# Test artifacts
+htmlcov/
+.coverage
+.cache/
+.pytest_cache/
+**/.pytest_cache/
+nosetests.xml
+coverage.xml
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Docker artifacts
+*.tar
+*.pid
+
+# Build artifacts
+dist/
+build/
+*.egg
+

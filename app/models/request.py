@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 from app.config import settings
 import re
@@ -10,8 +10,9 @@ class LegalAdviceRequest(BaseModel):
     )
     input_prompt: str = Field(..., min_length=1, description="Legal question from user")
 
-    @validator("user_id")
-    def validate_user_id(cls, v):
+    @field_validator("user_id")
+    @classmethod
+    def validate_user_id(cls, v: str) -> str:
         # Basic sanitization - alphanumeric and common separators only
         # This needs to be repalces with actual user validation using Auth0 or similar service
         if not re.match(r"^[a-zA-Z0-9_-]+$", v):
@@ -20,8 +21,9 @@ class LegalAdviceRequest(BaseModel):
             )
         return v
 
-    @validator("input_prompt")
-    def validate_input_prompt(cls, v):
+    @field_validator("input_prompt")
+    @classmethod
+    def validate_input_prompt(cls, v: str) -> str:
         # Basic input sanitization
         v = v.strip()
         if not v:

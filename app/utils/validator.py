@@ -1,51 +1,52 @@
 import re
+import json
+import os
 from typing import List, Tuple
 import logging
+from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
-# This list is fro Demo and needs to be updated for production & real-world usage
-BANNED_WORDS = [
-    "kill",
-    "murder",
-    "assault",
-    "torture",
-    "bomb",
-    "weapon",
-    "shoot",
-    "stab",
-    "bribe",
-    "launder",
-    "embezzle",
-    "defraud",
-    "counterfeit",
-    "forge",
-    "tax evasion",
-    "hack",
-    "phish",
-    "crack",
-    "exploit",
-    "DDoS",
-    "malware",
-    "ransomware",
-    "smuggle",
-    "traffick",
-    "contraband",
-    "fake ID",
-    "passport",
-    "visa",
-    "notarize fraud",
-    "practice law",
-    "unauthorized practice",
-    "attorney-client privilege",
-    "retainer",
-    "billable hours",
-    "give legal advice",
-    "jailbreak",
-    "ignore previous",
-    "system instructions",
-    "override",
-]
+
+# Load word lists from JSON files
+def load_word_list(filename: str) -> List[str]:
+    """Load word list from JSON file"""
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    filepath = os.path.join(current_dir, filename)
+
+    print(f"DEBUG: Looking for file at: {filepath}")
+    print(f"DEBUG: File exists: {os.path.exists(filepath)}")
+    print(f"DEBUG: Current working directory: {os.getcwd()}")
+    print(f"DEBUG: Script directory: {current_dir}")
+
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            print(f"DEBUG: Successfully loaded {len(data)} items from {filename}")
+            return data
+    except FileNotFoundError:
+        raise FileNotFoundError(f"JSON file not found: {filepath}")
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in file {filepath}: {e}")
+    except Exception as e:
+        raise Exception(f"Error loading {filepath}: {e}")
+
+
+# Load the lists with caching
+@lru_cache(maxsize=1)
+def get_banned_words() -> List[str]:
+    return load_word_list("banned_words.json")
+
+
+@lru_cache(maxsize=1)
+def get_legal_keywords() -> List[str]:
+    return load_word_list("legal_keywords.json")
+
+
+@lru_cache(maxsize=1)
+def get_legal_phrases() -> List[str]:
+    return load_word_list("legal_phrases.json")
+
 
 # Additional patterns for advanced evasion detection
 EVASION_PATTERNS = [
@@ -68,10 +69,11 @@ def contains_banned_words(text: str) -> List[str]:
     """
     found = []
     text_lower = text.lower()
+    banned_words = get_banned_words()
 
     # Direct word matching with word boundaries
-    for word in BANNED_WORDS:
-        # Use word boundaries to avoid false posiitves
+    for word in banned_words:
+        # Use word boundaries to avoid false positives
         pattern = r"\b" + re.escape(word.lower()) + r"\b"
         if re.search(pattern, text_lower):
             found.append(word)
@@ -88,11 +90,12 @@ def contains_banned_words(text: str) -> List[str]:
 def _check_spacing_evasion(text: str) -> List[str]:
     """Check for spacing and punctuation evasion (e.g., k i l l, k-i-l-l)"""
     found = []
+    banned_words = get_banned_words()
 
     # Remove common separators and check again
     cleaned_text = re.sub(r"[\s\-_\.]+", "", text)
 
-    for word in BANNED_WORDS:
+    for word in banned_words:
         if word.lower() in cleaned_text:
             found.append(word)
 
@@ -102,6 +105,7 @@ def _check_spacing_evasion(text: str) -> List[str]:
 def _check_leetspeak(text: str) -> List[str]:
     """Check for leetspeak variations"""
     found = []
+    banned_words = get_banned_words()
 
     leet_map = {
         "4": "a",
@@ -121,7 +125,7 @@ def _check_leetspeak(text: str) -> List[str]:
     for leet, normal in leet_map.items():
         normalized_text = normalized_text.replace(leet, normal)
 
-    for word in BANNED_WORDS:
+    for word in banned_words:
         if word.lower() in normalized_text:
             found.append(word)
 
@@ -138,106 +142,29 @@ def is_legal_topic(text: str) -> bool:
     Returns:
         Boolean indicating if text is legal-related
     """
-
-    # A list for demo purpose. This list can be updates to allow more keywords or
-    # restrict a particular keyword.
-    legal_keywords = [
-        "law",
-        "legal",
-        "attorney",
-        "lawyer",
-        "court",
-        "judge",
-        "trial",
-        "case",
-        "contract",
-        "agreement",
-        "rights",
-        "liability",
-        "lawsuit",
-        "litigation",
-        "statute",
-        "regulation",
-        "compliance",
-        "violation",
-        "penalty",
-        "fine",
-        "property",
-        "estate",
-        "will",
-        "trust",
-        "divorce",
-        "custody",
-        "adoption",
-        "immigration",
-        "visa",
-        "patent",
-        "trademark",
-        "copyright",
-        "employment",
-        "discrimination",
-        "harassment",
-        "wage",
-        "overtime",
-        "benefits",
-        "insurance",
-        "criminal",
-        "civil",
-        "constitutional",
-        "administrative",
-        "family",
-        "corporate",
-        "business",
-        "commercial",
-        "real estate",
-        "personal injury",
-        "medical malpractice",
-        "corporation",
-        "bankruptcy",
-        "debt",
-        "collection",
-        "foreclosure",
-        "eviction",
-        "landlord",
-        "tenant",
-        "tax",
-        "file tax",
-        "income tax",
-        "tax return",
-        "withholding",
-        "irs",
-        "hmrc",
-        "audit",
-    ]
+    legal_keywords = get_legal_keywords()
+    legal_phrases = get_legal_phrases()
 
     text_lower = text.lower()
 
+    # Debug logging
+    logger.debug(f"Checking text: {text_lower}")
+    logger.debug(f"Legal keywords count: {len(legal_keywords)}")
+    logger.debug(f"Legal phrases count: {len(legal_phrases)}")
+
     # Check for legal keywords
     for keyword in legal_keywords:
-        if keyword in text_lower:
+        if keyword.lower() in text_lower:
+            logger.debug(f"Found legal keyword: {keyword}")
             return True
 
-    # Check for legal phrases. Similarly like keywords, these phrases need to be updated
-    legal_phrases = [
-        "can i sue",
-        "is it legal",
-        "what are my rights",
-        "legal advice",
-        "against the law",
-        "legal consequences",
-        "file a lawsuit",
-        "legal action",
-        "court case",
-        "legal document",
-        "legal requirement",
-        "legal obligation",
-        "file tax",
-    ]
-
+    # Check for legal phrases
     for phrase in legal_phrases:
-        if phrase in text_lower:
+        if phrase.lower() in text_lower:
+            logger.debug(f"Found legal phrase: {phrase}")
             return True
 
+    logger.debug("No legal keywords or phrases found")
     return False
 
 
@@ -283,3 +210,28 @@ def validate_input_safety(text: str) -> Tuple[bool, List[str], str]:
             return False, [], "Potential prompt injection detected"
 
     return True, [], "Input is safe and relevant"
+
+
+# Test function to debug
+def test_validator():
+    """Test function to debug the validator"""
+    test_cases = [
+        "I need legal advice about my contract",
+        "What are my rights as a tenant?",
+        "Can I sue my employer?",
+        "How to cook pasta",
+        "What's the weather like?",
+        "I want to kill someone",
+        "How to hack a system",
+    ]
+
+    print("Testing validator...")
+    for test in test_cases:
+        result = validate_input_safety(test)
+        print(f"Text: '{test}' -> Result: {result}")
+
+
+if __name__ == "__main__":
+    # Enable debug logging
+    logging.basicConfig(level=logging.DEBUG)
+    test_validator()

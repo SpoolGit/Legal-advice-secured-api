@@ -14,15 +14,9 @@ def load_word_list(filename: str) -> List[str]:
     current_dir = os.path.dirname(os.path.abspath(__file__))
     filepath = os.path.join(current_dir, filename)
 
-    print(f"DEBUG: Looking for file at: {filepath}")
-    print(f"DEBUG: File exists: {os.path.exists(filepath)}")
-    print(f"DEBUG: Current working directory: {os.getcwd()}")
-    print(f"DEBUG: Script directory: {current_dir}")
-
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
-            print(f"DEBUG: Successfully loaded {len(data)} items from {filename}")
             return data
     except FileNotFoundError:
         raise FileNotFoundError(f"JSON file not found: {filepath}")
@@ -79,16 +73,25 @@ def contains_banned_words(text: str) -> List[str]:
 
 
 def _check_spacing_evasion(text: str) -> List[str]:
-    """Check for spacing and punctuation evasion (e.g., k i l l, k-i-l-l)"""
+    """Detect banned words split by spaces/punctuation (e.g., b r i b e)."""
     found = []
     banned_words = get_banned_words()
+    max_len = max(len(w) for w in banned_words)
+    min_len = min(len(w) for w in banned_words)
 
-    # Remove common separators and check again
-    cleaned_text = re.sub(r"[\s\-_\.]+", "", text)
+    text = text.lower()
 
-    for word in banned_words:
-        if word.lower() in cleaned_text:
-            found.append(word)
+    # Split into tokens
+    tokens = re.findall(r"\w+", text)  # Only alphanumeric tokens
+
+    # Check n-grams of token lengths 2 to 5
+    for n in range(min_len, max_len + 1):
+        for i in range(len(tokens) - n + 1):
+            ngram = tokens[i : i + n]
+            collapsed = "".join(ngram)
+            for word in banned_words:
+                if word.lower() in collapsed:
+                    found.append(word)
 
     return found
 
@@ -111,13 +114,18 @@ def _check_leetspeak(text: str) -> List[str]:
         "|": "l",
     }
 
+    # Early exit if no leetspeak characters present
+    if not any(c in text for c in leet_map):
+        return []
+
     # Convert leet-speak to normal text
     normalized_text = text
     for leet, normal in leet_map.items():
         normalized_text = normalized_text.replace(leet, normal)
 
     for word in banned_words:
-        if word.lower() in normalized_text:
+        pattern = r"\b" + re.escape(word.lower()) + r"\b"
+        if re.search(pattern, normalized_text):
             found.append(word)
 
     return found

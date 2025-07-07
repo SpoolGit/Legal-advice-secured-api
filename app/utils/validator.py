@@ -73,25 +73,21 @@ def contains_banned_words(text: str) -> List[str]:
 
 
 def _check_spacing_evasion(text: str) -> List[str]:
-    """Detect banned words split by spaces/punctuation (e.g., b r i b e)."""
+    """Detect banned words split across tokens with spaces/punctuation (e.g., 'bri be' → 'bribe')"""
     found = []
-    banned_words = get_banned_words()
-    max_len = max(len(w) for w in banned_words)
-    min_len = min(len(w) for w in banned_words)
-
+    banned_words = set(word.lower() for word in get_banned_words())
     text = text.lower()
 
-    # Split into tokens
-    tokens = re.findall(r"\w+", text)  # Only alphanumeric tokens
+    # Split into alphanumeric word tokens
+    tokens = re.findall(r"\w+", text)
 
-    # Check n-grams of token lengths 2 to 5
-    for n in range(min_len, max_len + 1):
+    # Sliding window over token sequences, try joining them
+    for n in range(1, 9):  # this range can be updated
         for i in range(len(tokens) - n + 1):
-            ngram = tokens[i : i + n]
-            collapsed = "".join(ngram)
-            for word in banned_words:
-                if word.lower() in collapsed:
-                    found.append(word)
+            token_seq = tokens[i : i + n]
+            collapsed = "".join(token_seq)
+            if collapsed in banned_words:
+                found.append(collapsed)
 
     return found
 
@@ -123,12 +119,7 @@ def _check_leetspeak(text: str) -> List[str]:
     for leet, normal in leet_map.items():
         normalized_text = normalized_text.replace(leet, normal)
 
-    for word in banned_words:
-        pattern = r"\b" + re.escape(word.lower()) + r"\b"
-        if re.search(pattern, normalized_text):
-            found.append(word)
-
-    return found
+    return _check_spacing_evasion(normalized_text)
 
 
 def is_legal_topic(text: str) -> bool:

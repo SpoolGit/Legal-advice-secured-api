@@ -48,15 +48,6 @@ def get_legal_phrases() -> List[str]:
     return load_word_list("legal_phrases.json")
 
 
-# Additional patterns for advanced evasion detection
-EVASION_PATTERNS = [
-    r"k.{0,3}i.{0,3}l.{0,3}l",  # kill with characters in-between
-    r"m.{0,3}u.{0,3}r.{0,3}d.{0,3}e.{0,3}r",  # murder with characters in-between
-    r"b.{0,3}r.{0,3}i.{0,3}b.{0,3}e",  # bribe with characters in-between
-    r"h.{0,3}a.{0,3}c.{0,3}k",  # hack with characters in-between
-]
-
-
 def contains_banned_words(text: str) -> List[str]:
     """
     Check for banned words in text, including advanced evasion techniques.
@@ -210,28 +201,3 @@ def validate_input_safety(text: str) -> Tuple[bool, List[str], str]:
             return False, [], "Potential prompt injection detected"
 
     return True, [], "Input is safe and relevant"
-
-
-# Test function to debug
-def test_validator():
-    """Test function to debug the validator"""
-    test_cases = [
-        "I need legal advice about my contract",
-        "What are my rights as a tenant?",
-        "Can I sue my employer?",
-        "How to cook pasta",
-        "What's the weather like?",
-        "I want to kill someone",
-        "How to hack a system",
-    ]
-
-    print("Testing validator...")
-    for test in test_cases:
-        result = validate_input_safety(test)
-        print(f"Text: '{test}' -> Result: {result}")
-
-
-if __name__ == "__main__":
-    # Enable debug logging
-    logging.basicConfig(level=logging.DEBUG)
-    test_validator()
